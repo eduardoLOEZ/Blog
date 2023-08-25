@@ -1,28 +1,54 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import BaseHead from "../components/BaseHead.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
 ---
 
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header title={SITE_TITLE} />
-		<main>
-			<h1>🧑 👋 Hola, Dev!</h1>
-			<p>
-				¡Bienvenidos a mi blog sobre tecnología y programación! Aquí encontrarás contenido interesante y actualizado sobre temas relacionados con la tecnología, el mundo de la programación y mucho más. Explora, aprende y mantente al tanto de las últimas novedades en el mundo digital. ¡Espero que disfrutes tu visita!
-			</p>
-			
-			
-				 Te acompañaré a través de artículos y tutoriales diseñados para brindarte una comprensión profunda y te ayudarán a dominar diversas áreas de la programación. ¡Es mi deseo que encuentres mi contenido útil, inspirador y que te motive en tu viaje de desarrollo!
-			</p>
-			
-		</main>
-		<Footer />
-	</body>
+  <head>
+    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"
+    ></script>
+  </head>
+  <body>
+    <Header title={SITE_TITLE} />
+    <main>
+      <h1>🧑 👋 Hola, Dev!</h1>
+      <p>
+        ¡Bienvenidos a mi blog sobre tecnología y programación! Aquí encontrarás
+        contenido interesante y actualizado sobre temas relacionados con la
+        tecnología, el mundo de la programación y mucho más. Explora, aprende y
+        mantente al tanto de las últimas novedades en el mundo digital. ¡Espero
+        que disfrutes tu visita!
+      </p>
+
+      Te acompañaré a través de artículos y tutoriales diseñados para brindarte
+      una comprensión profunda y te ayudarán a dominar diversas áreas de la
+      programación. ¡Es mi deseo que encuentres mi contenido útil, inspirador y
+      que te motive en tu viaje de desarrollo!
+    </main>
+
+    <Footer />
+    <script>
+		declare global{
+
+			interface window{
+				example: any;
+			}
+		}
+
+
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", (user) => {
+          if (!user) {
+            window.netlifyIdentity.on("login", () => {
+              document.location.href = "/admin/";
+            });
+          }
+        });
+      }
+    </script>
+  </body>
 </html>
