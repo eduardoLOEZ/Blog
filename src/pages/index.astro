@@ -32,13 +32,6 @@ import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
 
     <Footer />
     <script>
-		declare global{
-
-			interface window{
-				example: any;
-			}
-		}
-
 
       if (window.netlifyIdentity) {
         window.netlifyIdentity.on("init", (user) => {
