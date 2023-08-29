@@ -8,14 +8,14 @@ function Typer() {
     })
     
     const h1Style = {
-        fontSize: "2.5rem", // Tamaño de fuente más pequeño
+        fontSize: "1.9rem", // Tamaño de fuente más pequeño
     };
     
     return (
         <div>
             <h1 style={h1Style}>{text}
             <span>
-                <Cursor/>
+                <Cursor cursorColor='blue'/>
             </span></h1>
             
         </div>
