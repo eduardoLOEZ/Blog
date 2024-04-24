@@ -253,7 +253,7 @@ services:
 
 Corremos nuestro contenedor de dokcer con: docker-compose up -d
 
-## CREATING A TYPEORM ENTITY
+## CREANDO UNA ENTIDAD CON TYPEORM
 
 Vamos a hacer una entidad de como queremos que se vean nuestras tablas en la DB
 
@@ -300,3 +300,205 @@ export class CoffeesModule {}
 Al correr nuestra DB con docker y al igual el backend, entramos a pgadmin4, hacemos la conexión con los datos requeridos, y visualizaremos esto:
 Vemos la tabla de coffee con sus columnas que estan en el entity.ts
 ![nest cli](https://res.cloudinary.com/dyhpbqaht/image/upload/v1713684188/pgadmin_mbdzw2.png)
+
+## USANDO EL PATRÓN REPOSITORY PARA ACCEDER A LA DB
+
+TypeORM soporta el patron repository, eso quiere decir que cada entidad que creamos, tiene su propio repositorio.
+El patrón Repository se utiliza especialmente en aplicaciones de utilizan bases de datos.
+su objetivo es separar la lógica de negocio de la logica de acceso a los datos.
+
+En resumen, el patrón Repository proporciona una capa de abstracción entre la lógica de la aplicación y la capa de persistencia de datos (por ejemplo, una base de datos).
+
+![nest cli](https://res.cloudinary.com/dyhpbqaht/image/upload/v1713989278/repository_mmwgeh.png)
+
+El patrón repository actúa como una capa intermedia entre la lógica de negocio de tu aplicación y el acceso a los datos. Su objetivo principal es abstraer la lógica de acceso a los datos y proporcionar una interfaz común para interactuar con la base de datos, independientemente del tipo de base de datos subyacente.
+
+Para eso, vamos a crear una carpeta /repository. la cual llevara este archivo dentro: coffee.repository.ts
+
+En este codigo, extendemos el Repository de TypeORM e implementamos los metodos definidos en CoffeeRepository.
+
+````markdown
+```javascript
+
+// /repository/coffee.repository.ts
+import { Repository } from 'typeorm';
+import { Coffee } from '../entities/coffee.entity';
+import { CreateCoffeeDto } from '../dto/create-coffee.dto/create-coffee.dto';
+import { UpdateCoffeeDto } from '../dto/update-coffe.dto/update-coffe.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+
+//extiende la clase repositorio porporcionada por TypeORM
+//esto significa que esta clase hereda todo los metodos y propiedades de Repository<Coffee>
+export class CoffeeRepository extends Repository<Coffee> {
+  //en el constructor se usa inhectRepository para inyectar el repositorio de TypeORM de la entidad coffee
+  //esto permite acceder a los metodos proporcionados por el Repository dentro de la clase
+  constructor(
+    @InjectRepository(Coffee) private coffeeRepository: Repository<Coffee>,
+  ) {
+    //el super se utiliza para llamar al constructor de la clase padre y
+    //asegurar que el CoffeeRepository tenga todas las configuraciones necesarias y funcione correctamente como una extensión de la clase Repository<Coffee>.
+    //Esto es necesario para heredar comportamientos y propiedades de la clase padre y evitar errores de inicialización.
+    super(
+      coffeeRepository.target,
+      coffeeRepository.manager,
+      coffeeRepository.queryRunner,
+    );
+  }
+
+  public async findAll(): Promise<Coffee[]> {
+    return this.find();
+  }
+
+  public async findById(id: number): Promise<Coffee | null> {
+    return this.findOneBy({ id: id });
+  }
+
+  public async store(coffeDTO: CreateCoffeeDto): Promise<Coffee> {
+    const newCoffee = this.create(coffeDTO);
+    return this.save(newCoffee);
+  }
+
+  public async updateOne(
+    id: number,
+    updateCoffeeDto: UpdateCoffeeDto,
+  ): Promise<Coffee | null> {
+    const coffee = await this.findById(id);
+    if (!coffee) return undefined;
+    Object.assign(coffee, updateCoffeeDto);
+
+    return this.save(coffee);
+  }
+
+  public async destroy(id: number): Promise<void> {
+    await this.delete(id);
+  }
+}
+
+```
+````
+
+## Usando el Repository
+
+Ahora que implementamos el repositorio, vamos a usarlo en nuestros servicios:
+
+````markdown
+```javascript
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CoffeeRepository } from './repository/coffee.repository';
+import { UpdateCoffeeDto } from './dto/update-coffe.dto/update-coffe.dto';
+
+@Injectable()
+export class CoffeesService {
+  constructor(private readonly coffeRepository: CoffeeRepository) {}
+
+  async findAll() {
+    try {
+      const coffees = await this.coffeRepository.findAll();
+      return coffees;
+    } catch (error) {}
+  }
+
+  async findOne(id: number) {
+    const coffe = await this.coffeRepository.findById(id);
+
+    if (!coffe) {
+      throw new NotFoundException(`Coffe #${id} not found`);
+    }
+    return coffe;
+  }
+
+  async createCoffee(createCoffeeDto: any) {
+    const coffee = await this.coffeRepository.save(createCoffeeDto); // Utilizar save en lugar de store
+    return coffee;
+  }
+
+  async update(id: number, updateCoffeeDto: UpdateCoffeeDto) {
+    try {
+      await this.findOne(id);
+      return await this.coffeRepository.updateOne(id, updateCoffeeDto);
+    } catch (error) {
+      // Manejar el error
+    }
+  }
+
+  async remove(id: number) {
+    return await this.coffeRepository.destroy(id);
+  }
+}
+```
+````
+
+## coffee controller
+
+````markdown
+```javascript
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { CoffeesService } from './coffees.service';
+import { CreateCoffeeDto } from './dto/create-coffee.dto/create-coffee.dto';
+import { UpdateCoffeeDto } from './dto/update-coffe.dto/update-coffe.dto';
+
+@Controller('coffees')
+export class CoffeesController {
+  constructor(private readonly coffeessService: CoffeesService) {}
+
+  @Get()
+  findAll() {
+    return this.coffeessService.findAll();
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.FOUND)
+  findOne(@Param('id') id: number) {
+    return this.coffeessService.findOne(id);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  createCoffee(@Body() createCoffeeDto: CreateCoffeeDto) {
+    return this.coffeessService.createCoffee(createCoffeeDto);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: number, @Body() updateCoffeeDto: UpdateCoffeeDto) {
+    return this.coffeessService.update(id, updateCoffeeDto);
+  }
+
+  @Delete(':id')
+  delete(@Param('id') id: number) {
+    return this.coffeessService.remove(id);
+  }
+}
+```
+````
+
+## Registrando el Repository:
+
+Para poner disponible el patron repository en la inyección de dependenciasm vamos a registrarlo en el coffee.module.ts, importamos el repository que hicimos y vamos a colocarlo en providers:
+
+````markdown
+```javascript
+import { Module } from "@nestjs/common";
+import { CoffeesController } from "./coffees.controller";
+import { CoffeesService } from "./coffees.service";
+import { Coffee } from "./entities/coffee.entity";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { CoffeeRepository } from "./repository/coffee.repository";
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Coffee])],
+  controllers: [CoffeesController],
+  providers: [CoffeesService, CoffeeRepository],
+})
+export class CoffeesModule {}
+```
+````
